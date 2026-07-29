@@ -107,6 +107,56 @@ Verified present on both the app and the widget:
 entitlements, which removes the App Group, which drops the app to the `.local`
 tier and makes the widget useless. The commands above omit it deliberately.
 
+### Building this yourself
+
+The identifiers above belong to one Apple Developer account, so a fresh clone
+**will not build signed** until you point it at yours. Nothing here is secret —
+team IDs and bundle IDs ship inside every app on the App Store — it simply
+isn't yours to sign with.
+
+Pick a reverse-DNS prefix you control (`com.example` below) and your own
+10-character team ID, which you can read straight off your signing certificate:
+
+```sh
+security find-certificate -a -c "Apple Development" -p \
+  | openssl x509 -noout -subject
+# → …/OU=YOURTEAMID/…    the OU field is the team ID
+```
+
+Then replace `com.rahulkassel` and `BAMVK6LBVP` throughout:
+
+```sh
+grep -rl 'com\.rahulkassel\|BAMVK6LBVP' \
+  project.yml MagicPill MagicPillKit MagicPillWidget README.md \
+  | xargs sed -i '' \
+      -e 's/com\.rahulkassel/com.example/g' \
+      -e 's/BAMVK6LBVP/YOURTEAMID/g'
+xcodegen generate
+```
+
+That covers all seven places the identifiers appear, which is why a
+find-and-replace beats editing by hand:
+
+| Where | What |
+|---|---|
+| `project.yml` | `bundleIdPrefix`, `DEVELOPMENT_TEAM`, five `PRODUCT_BUNDLE_IDENTIFIER`s, `BGTaskSchedulerPermittedIdentifiers` |
+| `MagicPill/MagicPill.entitlements` | App Group, iCloud container |
+| `MagicPillWidget/MagicPillWidget.entitlements` | App Group, iCloud container |
+| `MagicPillKit/Model/PersistenceStore.swift` | `appGroupID` |
+| `MagicPill/App/ScheduleCoordinator.swift` | `refreshTaskIdentifier` |
+
+The App Group and iCloud container strings must match **exactly** across the
+entitlements files and `PersistenceStore.appGroupID`. A mismatch doesn't fail
+the build — the app quietly falls back to the `.local` tier and the widget shows
+"unavailable", which looks like a widget bug and isn't.
+
+Build once with `-allowProvisioningUpdates` (see above) and Xcode registers the
+App ID, App Group, and iCloud container against your account.
+
+Without a paid Apple Developer account you can still run everything on the
+simulator and the full test suite; only device builds, real iCloud sync, and
+home-screen widgets need one.
+
 **The simulator does not enforce entitlements the way a device does.** An App
 Group works there once the build is signed at all, so a working simulator build
 is *not* evidence that device provisioning is correct — check
