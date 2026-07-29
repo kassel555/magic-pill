@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+	  Magic Pill collects nothing.
+
+	  Health data stays on device and, when iCloud sync is enabled, in the
+	  user's own private CloudKit database. That is their storage, not ours:
+	  the app has no server, no account, and no analytics, so there is no
+	  collected data to declare.
+	-->
+	<key>NSPrivacyTracking</key>
+	<false/>
+	<key>NSPrivacyTrackingDomains</key>
+	<array/>
+	<key>NSPrivacyCollectedDataTypes</key>
+	<array/>
+	<!--
+	  No required-reason APIs are called from this binary. Any such calls made
+	  internally by SwiftData or CloudKit are declared in Apple's own framework
+	  manifests. Add an entry here the moment app code touches UserDefaults,
+	  file timestamps, disk space, active keyboards, or system boot time.
+	-->
+	<key>NSPrivacyAccessedAPITypes</key>
+	<array/>
+</dict>
+</plist>

@@ -1,0 +1,133 @@
+name: MagicPill
+options:
+  bundleIdPrefix: com.rahulkassel
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+    # Team "Rahul Kassel". Signing is what makes the App Group real, and the
+    # App Group is what lets the widget see the app's data at all.
+    DEVELOPMENT_TEAM: BAMVK6LBVP
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+
+  MagicPillKit:
+    type: framework
+    platform: iOS
+    sources:
+      - path: MagicPillKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rahulkassel.MagicPill.Kit
+        GENERATE_INFOPLIST_FILE: YES
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SKIP_INSTALL: NO
+        BUILD_LIBRARY_FOR_DISTRIBUTION: NO
+
+  MagicPill:
+    type: application
+    platform: iOS
+    sources:
+      - path: MagicPill
+    dependencies:
+      - target: MagicPillKit
+        embed: true
+      - target: MagicPillWidgetExtension
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rahulkassel.MagicPill
+        PRODUCT_NAME: Magic Pill
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_ENTITLEMENTS: MagicPill/MagicPill.entitlements
+        ENABLE_PREVIEWS: YES
+    info:
+      path: MagicPill/Info.plist
+      properties:
+        CFBundleDisplayName: Magic Pill
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        # Background refresh keeps the occurrence window warm for someone who
+        # hasn't opened the app in days. Both keys are required: the mode
+        # enables the capability, the identifier list authorises this specific
+        # task. Submitting a task whose identifier is absent here throws.
+        UIBackgroundModes:
+          - fetch
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.rahulkassel.MagicPill.refresh
+
+  MagicPillWidgetExtension:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: MagicPillWidget
+    dependencies:
+      - target: MagicPillKit
+        embed: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rahulkassel.MagicPill.Widget
+        PRODUCT_NAME: MagicPillWidget
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_ENTITLEMENTS: MagicPillWidget/MagicPillWidget.entitlements
+        SKIP_INSTALL: YES
+    info:
+      path: MagicPillWidget/Info.plist
+      properties:
+        CFBundleDisplayName: Magic Pill
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+
+  MagicPillTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: MagicPillTests
+    dependencies:
+      - target: MagicPillKit
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rahulkassel.MagicPill.Tests
+        GENERATE_INFOPLIST_FILE: YES
+
+  MagicPillUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: MagicPillUITests
+    dependencies:
+      - target: MagicPill
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.rahulkassel.MagicPill.UITests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: MagicPill
+
+schemes:
+  MagicPill:
+    build:
+      targets:
+        MagicPill: all
+        MagicPillWidgetExtension: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - MagicPillTests
+        - MagicPillUITests

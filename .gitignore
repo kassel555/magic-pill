@@ -1,0 +1,22 @@
+# Build output
+build/
+build-device/
+DerivedData/
+
+# The Xcode project is generated from project.yml — see the README.
+# project.yml is the source of truth; a committed .xcodeproj would drift from it
+# and produce unreviewable merge conflicts.
+*.xcodeproj/
+
+# Also generated from project.yml's `info:` blocks.
+MagicPill/Info.plist
+MagicPillWidget/Info.plist
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# macOS
+.DS_Store
