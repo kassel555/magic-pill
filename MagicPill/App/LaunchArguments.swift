@@ -29,6 +29,14 @@ enum LaunchArguments {
         ProcessInfo.processInfo.arguments.contains("-skipSeeding")
     }
 
+    /// Opens the widget gallery straight away, with fixed sample data.
+    ///
+    /// Used to produce the widget screenshots: the widgets themselves can only
+    /// be seen by adding them to a home screen, which no automation can do.
+    static var showsWidgetGallery: Bool {
+        ProcessInfo.processInfo.arguments.contains("-widgetGallery")
+    }
+
     /// Forces first-run onboarding.
     ///
     /// `-uiTesting` otherwise marks onboarding complete, so that the twelve
@@ -68,6 +76,10 @@ enum A11y {
         static let nameField = "onboarding.nameField"
         static let primaryButton = "onboarding.primaryButton"
         static let skipButton = "onboarding.skipButton"
+    }
+
+    enum Gallery {
+        static func widget(_ layout: String) -> String { "gallery.widget.\(layout)" }
     }
 
     enum Diagnostics {

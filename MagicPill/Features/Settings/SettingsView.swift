@@ -153,6 +153,10 @@ struct SettingsView: View {
 
     private var aboutSection: some View {
         Section {
+            NavigationLink("Widgets") {
+                WidgetGalleryView()
+            }
+
             LabeledContent("Version") {
                 Text(versionString)
                     .foregroundStyle(Palette.textSecondary)

@@ -107,6 +107,33 @@ Verified present on both the app and the widget:
 entitlements, which removes the App Group, which drops the app to the `.local`
 tier and makes the widget useless. The commands above omit it deliberately.
 
+### Widgets
+
+![Widget layouts, light](Docs/screenshots/widgets-light.png)
+![Widget layouts, dark](Docs/screenshots/widgets-dark.png)
+
+Four layouts — lock screen, circular, small, medium — with a complete button on
+each medium row that resolves a dose without opening the app.
+
+The views live in `MagicPillKit/Widgets/UpNextViews.swift` and take an explicit
+`WidgetLayout` rather than reading `@Environment(\.widgetFamily)`, which only
+works inside a real widget process. That one change is what makes them
+renderable anywhere, so they can be seen without a device and a long-press on
+the home screen. To look at them:
+
+```sh
+# Straight to the gallery, with fixed sample data
+xcrun simctl launch booted com.rahulkassel.MagicPill --args -uiTesting -widgetGallery
+```
+
+The gallery is also reachable at **Settings → Widgets**, where it renders live
+data instead.
+
+**The gallery is not the widget.** `containerBackground`, `widgetAccentable`,
+and interactive `AppIntent` buttons only function inside a widget process; the
+gallery approximates the surrounding chrome and renders the complete button
+inert. Treat it as a layout check, not proof that WidgetKit behaves.
+
 ### Building this yourself
 
 The identifiers above belong to one Apple Developer account, so a fresh clone

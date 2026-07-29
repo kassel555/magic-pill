@@ -84,6 +84,7 @@ struct RootView: View {
 
     @State private var isAddingItem = false
     @State private var isShowingSettings = false
+    @State private var isShowingWidgetGallery = false
     @State private var editingItem: TrackedItem?
 
     var body: some View {
@@ -123,6 +124,14 @@ struct RootView: View {
         // one screen that explains what the app is.
         .fullScreenCover(isPresented: .constant(!hasCompletedOnboarding)) {
             OnboardingView()
+        }
+        .fullScreenCover(isPresented: $isShowingWidgetGallery) {
+            WidgetGalleryView(usesFixedSampleData: LaunchArguments.showsWidgetGallery)
+        }
+        .task {
+            if LaunchArguments.showsWidgetGallery {
+                isShowingWidgetGallery = true
+            }
         }
     }
 

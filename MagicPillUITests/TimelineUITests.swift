@@ -490,6 +490,10 @@ enum A11y {
         static let skipButton = "onboarding.skipButton"
     }
 
+    enum Gallery {
+        static func widget(_ layout: String) -> String { "gallery.widget.\(layout)" }
+    }
+
     enum Diagnostics {
         static let pendingCount = "diagnostics.pendingCount"
         static let authorized = "diagnostics.authorized"
