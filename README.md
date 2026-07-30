@@ -34,6 +34,36 @@ Two things that will stop you, neither of them the code:
 
 The app needs iOS 26.0 or later.
 
+## Ship to TestFlight
+
+The route to use when the device runs a newer iOS than the local Xcode supports
+— TestFlight installs an App Store-signed build directly, so the SDK gap stops
+mattering. It must run on a Mac holding the **Apple Distribution** certificate.
+
+1. **App record**, once only: appstoreconnect.apple.com → Apps → **+** → New App.
+   Platform iOS, bundle ID `com.rahulkassel.MagicPill`, any SKU.
+2. **Bump the build number** for every upload after the first — App Store Connect
+   rejects a duplicate `CFBundleVersion`. It lives in `project.yml` as
+   `CURRENT_PROJECT_VERSION`; change it and re-run `xcodegen generate`.
+3. **Archive**: destination **Any iOS Device (arm64)** → *Product → Archive*.
+4. **Upload**: Organizer → *Distribute App* → *App Store Connect* → *Upload*.
+5. **Install**: App Store Connect → TestFlight → add yourself as an Internal
+   Tester, then install the build from the TestFlight app on the phone.
+
+Internal testing skips App Review, so a build is usually installable a few
+minutes after processing.
+
+Already handled, so they don't bite mid-upload:
+
+- `ITSAppUsesNonExemptEncryption: false`, so no export-compliance prompt.
+- `PrivacyInfo.xcprivacy` in **both** the app and the widget — a missing one in
+  either is a rejection.
+- Icons generated from the committed 1024px source.
+
+**What TestFlight costs you:** no Xcode console. Diagnosing a problem means
+reproducing it from a description rather than reading a log, so for anything
+opaque, a matching Xcode version and a cable is still the better loop.
+
 ## Getting started
 
 The `.xcodeproj` is generated and **not** meant to be edited by hand — change
