@@ -10,6 +10,30 @@ design manifesto that drives it.
 - iOS 26.0+ deployment target
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
 
+## Run it on your iPhone
+
+```sh
+git clone https://github.com/kassel555/magic-pill.git
+cd magic-pill
+./Scripts/bootstrap.sh
+open MagicPill.xcodeproj
+```
+
+In Xcode: select the **MagicPill** target → **Signing & Capabilities**, set
+**Team** to your Apple Developer team, pick your iPhone as the destination, and
+press Run. If your team is already `Rahul Kassel (BAMVK6LBVP)` there is nothing
+to change.
+
+Two things that will stop you, neither of them the code:
+
+- **Your Xcode must support your iPhone's iOS version.** An iPhone on a newer
+  major iOS than Xcode knows about refuses to install, with
+  *"The version of Xcode does not support iOS X."* That's an Xcode upgrade.
+- **The App Group and iCloud container belong to one team.** On a different
+  team, follow *Building this yourself* below before running bootstrap.
+
+The app needs iOS 26.0 or later.
+
 ## Getting started
 
 The `.xcodeproj` is generated and **not** meant to be edited by hand — change
