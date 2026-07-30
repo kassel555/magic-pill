@@ -20,3 +20,9 @@ xcuserdata/
 
 # macOS
 .DS_Store
+
+# Archives and exported builds
+build-archive/
+*.xcarchive
+*.ipa
+ExportOptions.plist
