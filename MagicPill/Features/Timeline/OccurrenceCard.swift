@@ -27,6 +27,11 @@ struct OccurrenceCard: View {
             .foregroundStyle(isResolved ? Palette.textSecondary : Palette.textPrimary)
             .strikethrough(occurrence.state == .skipped, color: Palette.textTertiary)
             .fixedSize(horizontal: false, vertical: true)
+            // Wins space against the status label beside it. Without this the
+            // status's own width claim squeezed the name until it couldn't grow
+            // with Dynamic Type — which the accessibility audit flagged on
+            // resolved rows with longer names.
+            .layoutPriority(1)
     }
 
     private var item: TrackedItem? { occurrence.item }
@@ -168,9 +173,9 @@ struct OccurrenceCard: View {
         }
         .font(.caption.weight(.medium))
         .foregroundStyle(color)
-        // A status is two words; it should never wrap or be compressed by a
-        // long item name competing for the same line.
-        .fixedSize(horizontal: true, vertical: false)
+        // Yields to the item name rather than claiming width from it. A status
+        // is two words and can afford to be the thing that gives.
+        .layoutPriority(0)
     }
 
     private var cardBackground: some View {

@@ -21,6 +21,8 @@ public enum MockData {
 
     @MainActor
     public static func populate(context: ModelContext) {
+        var allOccurrences: [Occurrence] = []
+
         for (item, schedule) in sampleItems() {
             context.insert(item)
             schedule.item = item
@@ -29,9 +31,87 @@ public enum MockData {
             for occurrence in occurrences(for: item, schedule: schedule) {
                 occurrence.item = item
                 context.insert(occurrence)
+                allOccurrences.append(occurrence)
             }
         }
+
+        guaranteeAPendingOccurrence(among: allOccurrences)
+        seedPastHistory(context: context)
         try? context.save()
+    }
+
+    /// Seeds a week of settled history for the medication items.
+    ///
+    /// Without it the adherence view has nothing to show — and just after
+    /// midnight, when every one of today's rows is still in the future, neither
+    /// does anything else. Real history also makes the 30-day grid legible
+    /// instead of one lone dot.
+    ///
+    /// Mostly taken with a couple of lapses, because a fixture that is 100%
+    /// perfect never exercises the partial or missed states.
+    @MainActor
+    private static func seedPastHistory(context: ModelContext) {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+
+        let items = (try? context.fetch(
+            FetchDescriptor<TrackedItem>(
+                predicate: #Predicate { !$0.isArchived }
+            )
+        )) ?? []
+
+        for item in items where item.template == .medication {
+            guard let schedule = item.schedules?.first else { continue }
+
+            for daysAgo in 1...7 {
+                guard let day = calendar.date(byAdding: .day, value: -daysAgo, to: today) else {
+                    continue
+                }
+
+                for minutes in schedule.timesOfDay {
+                    let parts = TimeOfDay.components(from: minutes)
+                    guard let scheduledAt = calendar.date(
+                        bySettingHour: parts.hour, minute: parts.minute, second: 0, of: day
+                    ) else { continue }
+
+                    // Two deliberate lapses in the week, so the grid shows more
+                    // than a wall of green.
+                    let state: OccurrenceState = (daysAgo == 3 || daysAgo == 6)
+                        ? .missed
+                        : .taken
+
+                    let occurrence = Occurrence(
+                        item: item,
+                        scheduledAt: scheduledAt,
+                        state: state,
+                        generatedFromScheduleID: schedule.id
+                    )
+                    if state == .taken {
+                        occurrence.resolvedAt = scheduledAt.addingTimeInterval(300)
+                    }
+                    context.insert(occurrence)
+                }
+            }
+        }
+    }
+
+    /// Ensures at least one row is still pending, whatever time it is.
+    ///
+    /// Fixtures are seeded relative to `now` and anything past is marked taken,
+    /// so after the last scheduled time of day — 7pm — every row was resolved
+    /// and any test needing something to complete failed. It broke twice, in
+    /// two different tests, before being fixed here rather than in each test.
+    @MainActor
+    private static func guaranteeAPendingOccurrence(among occurrences: [Occurrence]) {
+        guard !occurrences.isEmpty else { return }
+        guard occurrences.allSatisfy(\.isResolved) else { return }
+
+        // Reopen the latest row and push it an hour out, so it is genuinely
+        // pending rather than merely relabelled.
+        guard let latest = occurrences.max(by: { $0.scheduledAt < $1.scheduledAt }) else { return }
+        latest.state = .pending
+        latest.resolvedAt = nil
+        latest.scheduledAt = Date.now.addingTimeInterval(3600)
     }
 
     // MARK: - Fixtures

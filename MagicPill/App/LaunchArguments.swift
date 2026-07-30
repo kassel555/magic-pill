@@ -78,6 +78,10 @@ enum A11y {
         static let skipButton = "onboarding.skipButton"
     }
 
+    enum Detail {
+        static let edit = "detail.edit"
+    }
+
     enum Gallery {
         static func widget(_ layout: String) -> String { "gallery.widget.\(layout)" }
     }

@@ -85,12 +85,15 @@ struct RootView: View {
     @State private var isAddingItem = false
     @State private var isShowingSettings = false
     @State private var isShowingWidgetGallery = false
-    @State private var editingItem: TrackedItem?
+    /// Tapping a card opens *detail*, not the editor. The editor is reached from
+    /// there — an item's history is what a user wants to see when they tap it,
+    /// and dropping them straight into a form invites accidental edits.
+    @State private var selectedItem: TrackedItem?
 
     var body: some View {
         NavigationStack {
             TimelineView(
-                onSelect: { editingItem = $0.item },
+                onSelect: { selectedItem = $0.item },
                 onOpenSettings: { isShowingSettings = true }
             )
                 .toolbar(.hidden, for: .navigationBar)
@@ -110,8 +113,11 @@ struct RootView: View {
         .sheet(isPresented: $isAddingItem) {
             ItemEditorView()
         }
-        .sheet(item: $editingItem) { item in
-            ItemEditorView(item: item)
+        .sheet(item: $selectedItem) { item in
+            NavigationStack {
+                ItemDetailView(item: item)
+            }
+            .tint(Palette.accentText)
         }
         .sheet(isPresented: $isShowingSettings) {
             SettingsView(

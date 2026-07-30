@@ -362,8 +362,15 @@ private struct NowIndicator: View {
         }
         .padding(.leading, typeSize.prefersStackedTimeline ? Space.xl : 0)
         .padding(.vertical, Space.s)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Now, \(now.formatted(date: .omitted, time: .shortened))")
+        // Hidden from accessibility, not merely unlabelled.
+        //
+        // It used to carry a "Now, 6:25 AM" label, which made a 17pt-tall
+        // hairline a focusable element — and the audit correctly flagged it as
+        // a target too small to interact with. The indicator is decoration: it
+        // orients the eye. Every card already announces its own time, and
+        // pending/overdue state tells a VoiceOver user where the day has got
+        // to, so nothing is lost by taking it out of the tree.
+        .accessibilityHidden(true)
     }
 }
 

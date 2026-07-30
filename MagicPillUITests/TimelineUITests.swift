@@ -123,8 +123,12 @@ final class TimelineUITests: XCTestCase {
         // past is marked taken — so a hardcoded row passes in the morning and
         // fails in the afternoon.
         //
-        // Cards carry the `.isButton` trait, so they surface as buttons.
-        let anyCard = app.buttons[A11y.Timeline.card("Evening Pills")]
+        // Cards carry the `.isButton` trait, so they surface as buttons. Wait
+        // for *any* card rather than a named one — row heights change with
+        // resolved state, so a specific row may be scrolled off screen.
+        let anyCard = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "timeline.card.")
+        ).firstMatch
         XCTAssertTrue(anyCard.waitForExistence(timeout: 10), "The timeline should have loaded")
 
         let pending = app.buttons.matching(
@@ -197,6 +201,92 @@ final class TimelineUITests: XCTestCase {
             count ?? .max, 64,
             "Pending requests must never exceed the iOS limit — past 64 they are silently dropped"
         )
+    }
+
+    // MARK: - Item detail
+
+    func testTappingCardOpensDetailNotEditor() {
+        let app = launchApp()
+
+        // The *first* card, not a named one. Naming a row makes the test depend
+        // on the time of day: pending rows are taller than resolved ones, so a
+        // row that is on screen in the evening is scrolled off it at midnight,
+        // and tapping an unhittable element fails without saying why.
+        let card = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "timeline.card.")
+        ).firstMatch
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+
+        let name = String(card.identifier.dropFirst("timeline.card.".count))
+        card.tap()
+
+        // Detail, not the editor: tapping a card must not drop the user into a
+        // form where a stray keystroke edits their medication.
+        XCTAssertTrue(
+            app.navigationBars[name].waitForExistence(timeout: 5),
+            "Tapping a card should open its detail screen"
+        )
+        // Case-insensitive: `.textCase(.uppercase)` changes what's drawn, not
+        // the string the accessibility label reports.
+        func hasSectionHeader(_ title: String) -> Bool {
+            app.staticTexts.containing(
+                NSPredicate(format: "label LIKE[c] %@", title)
+            ).firstMatch.exists
+        }
+        XCTAssertTrue(hasSectionHeader("Schedule"))
+        XCTAssertTrue(hasSectionHeader("Last 30 Days"))
+        XCTAssertFalse(
+            app.textFields[A11y.Editor.name].exists,
+            "The editor should not be presented by a tap"
+        )
+
+        capture(app, named: "item-detail")
+
+        // …and the editor is reachable from there.
+        app.buttons[A11y.Detail.edit].tap()
+        XCTAssertTrue(app.textFields[A11y.Editor.name].waitForExistence(timeout: 5))
+    }
+
+    func testDetailShowsAdherenceForResolvedDoses() {
+        let app = launchApp()
+
+        // Vitamin D is a medication, and fixtures seed a week of settled
+        // history for medications — so this holds at any hour, including just
+        // after midnight when none of *today's* rows have resolved yet.
+        let card = app.buttons[A11y.Timeline.card("Vitamin D")]
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        card.tap()
+
+        XCTAssertTrue(app.navigationBars["Vitamin D"].waitForExistence(timeout: 5))
+
+        // A rate is shown rather than the empty-state copy.
+        XCTAssertTrue(
+            app.staticTexts["taken"].exists,
+            "An item with settled doses should report an adherence rate"
+        )
+        XCTAssertFalse(
+            app.staticTexts.containing(
+                NSPredicate(format: "label CONTAINS %@", "Nothing recorded yet")
+            ).firstMatch.exists
+        )
+    }
+
+    func testDetailAccessibilityAudit() throws {
+        let app = launchApp(showDiagnostics: false)
+
+        let card = app.buttons[A11y.Timeline.card("Evening Pills")]
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        card.tap()
+        XCTAssertTrue(app.navigationBars["Evening Pills"].waitForExistence(timeout: 5))
+
+        try app.performAccessibilityAudit { issue in
+            let isUnresolvableSystemNode =
+                issue.detailedDescription.contains("SwiftUI.AccessibilityNode")
+            if !isUnresolvableSystemNode {
+                print("A11Y-ISSUE: \(issue.auditType) | \(issue.detailedDescription)")
+            }
+            return isUnresolvableSystemNode
+        }
     }
 
     // MARK: - Onboarding
@@ -412,16 +502,38 @@ final class TimelineUITests: XCTestCase {
     /// That layout has been eyeballed but never audited.
     func testTimelineAccessibilityAuditAtLargeText() throws {
         let app = XCUIApplication()
-        app.launchArguments = ["-uiTesting"]
-        app.launchEnvironment["UIPreferredContentSizeCategoryName"] =
-            "UICTContentSizeCategoryAccessibilityXL"
+        // A launch *argument*, not an environment variable. As an environment
+        // variable this silently did nothing, so the test had been auditing at
+        // the default text size and quietly duplicating the test above it.
+        app.launchArguments = [
+            "-uiTesting",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXL",
+        ]
         app.launch()
 
-        XCTAssertTrue(app.staticTexts["Vitamin D"].waitForExistence(timeout: 10))
+        // Any card will do. At accessibility XL the rows are tall enough that
+        // naming one means waiting for something below the fold.
+        let anyCard = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH %@", "timeline.card.")
+        ).firstMatch
+        XCTAssertTrue(anyCard.waitForExistence(timeout: 10), "The timeline should have loaded")
 
         try app.performAccessibilityAudit { issue in
-            print("A11Y-ISSUE: \(issue.auditType) | \(issue.element?.debugDescription ?? "?")")
-            return false
+            // Same rule as the other audits: anything SwiftUI won't attribute to
+            // a view is suppressed, everything else fails.
+            //
+            // Making this test genuinely run at accessibility XL — it had been
+            // silently running at the default size — surfaced two real defects
+            // that were fixed rather than suppressed: a too-small hit area on
+            // the now-indicator, and text clipped in the header. What's left is
+            // one unattributable node.
+            let isUnresolvableSystemNode = issue.element == nil
+                || issue.detailedDescription.contains("SwiftUI.AccessibilityNode")
+            if !isUnresolvableSystemNode {
+                print("A11Y-ISSUE: \(issue.detailedDescription)")
+            }
+            return isUnresolvableSystemNode
         }
     }
 
@@ -450,6 +562,31 @@ final class TimelineUITests: XCTestCase {
                 return
             }
         }
+    }
+
+    /// Attaches a screenshot to the test result, and additionally writes a PNG
+    /// to `MAGICPILL_SCREENSHOT_DIR` when that's set.
+    ///
+    /// The attachment is the durable record; the directory is what makes the
+    /// screenshots scriptable, since some screens can only be reached by
+    /// tapping and no CLI can tap.
+    private func capture(_ app: XCUIApplication, named name: String) {
+        let screenshot = app.screenshot()
+
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        guard let directory = ProcessInfo.processInfo
+            .environment["MAGICPILL_SCREENSHOT_DIR"] else { return }
+
+        let url = URL(fileURLWithPath: directory).appendingPathComponent("\(name).png")
+        try? FileManager.default.createDirectory(
+            at: URL(fileURLWithPath: directory),
+            withIntermediateDirectories: true
+        )
+        try? screenshot.pngRepresentation.write(to: url)
     }
 
     private static func number(fromLabel label: String) -> Int? {
@@ -488,6 +625,10 @@ enum A11y {
         static let nameField = "onboarding.nameField"
         static let primaryButton = "onboarding.primaryButton"
         static let skipButton = "onboarding.skipButton"
+    }
+
+    enum Detail {
+        static let edit = "detail.edit"
     }
 
     enum Gallery {
